@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 from airflow.decorators import dag, task
 from airflow.operators.python import is_venv_installed
+from airflow.providers.mysql.operators.mysql import MySqlOperator
+print(MySqlOperator)
 
 #LOADING ENVIROMENT VARIABLES
 load_dotenv()
@@ -28,56 +30,58 @@ else:
         DAG for extracting and save in database
         """
 
-        @task.virtualenv(
-            use_dill=True,
-            system_site_packages=False,
-            requirements=[
-                "python-dotenv==1.0.1",
-                "asttokens==2.4.1",
-                "beautifulsoup4==4.12.3",
-                "certifi==2023.11.17",
-                "charset-normalizer==3.3.2",
-                "comm==0.2.1",
-                "debugpy==1.8.0",
-                "decorator==5.1.1",
-                "exceptiongroup==1.2.0",
-                "executing==2.0.1",
-                "greenlet==3.0.3",
-                "idna==3.6",
-                "ipykernel==6.29.0",
-                "ipython==8.20.0",
-                "jedi==0.19.1",
-                "jupyter_client==8.6.0",
-                "jupyter_core==5.7.1",
-                "matplotlib-inline==0.1.6",
-                "mysql-connector-python==8.3.0",
-                "nest-asyncio==1.6.0",
-                "packaging==23.2",
-                "parso==0.8.3",
-                "pexpect==4.9.0",
-                "platformdirs==4.1.0",
-                "prompt-toolkit==3.0.43",
-                "psutil==5.9.8",
-                "ptyprocess==0.7.0",
-                "pure-eval==0.2.2",
-                "Pygments==2.17.2",
-                "python-dateutil==2.8.2",
-                "pyzmq==25.1.2",
-                "requests==2.31.0",
-                "six==1.16.0",
-                "soupsieve==2.5",
-                "SQLAlchemy==2.0.25",
-                "stack-data==0.6.3",
-                "tornado==6.4",
-                "traitlets==5.14.1",
-                "typing_extensions==4.9.0",
-                "urllib3==2.1.0",
-                "wcwidth==0.2.13"
-            ],
-        )
+        # @task.virtualenv(
+        #     use_dill=True,
+        #     system_site_packages=True,
+            # requirements=[
+            #     "python-dotenv==1.0.1",
+            #     "asttokens==2.4.1",
+            #     "beautifulsoup4==4.12.3",
+            #     "certifi==2023.11.17",
+            #     "charset-normalizer==3.3.2",
+            #     "comm==0.2.1",
+            #     "debugpy==1.8.0",
+            #     "decorator==5.1.1",
+            #     "exceptiongroup==1.2.0",
+            #     "executing==2.0.1",
+            #     "greenlet==3.0.3",
+            #     "idna==3.6",
+            #     "ipykernel==6.29.0",
+            #     "ipython==8.20.0",
+            #     "jedi==0.19.1",
+            #     "jupyter_client==8.6.0",
+            #     "jupyter_core==5.7.1",
+            #     "matplotlib-inline==0.1.6",
+            #     "mysql-connector-python==8.3.0",
+            #     "nest-asyncio==1.6.0",
+            #     "packaging==23.2",
+            #     "parso==0.8.3",
+            #     "pexpect==4.9.0",
+            #     "platformdirs==4.1.0",
+            #     "prompt-toolkit==3.0.43",
+            #     "psutil==5.9.8",
+            #     "ptyprocess==0.7.0",
+            #     "pure-eval==0.2.2",
+            #     "Pygments==2.17.2",
+            #     "python-dateutil==2.8.2",
+            #     "pyzmq==25.1.2",
+            #     "requests==2.31.0",
+            #     "six==1.16.0",
+            #     "soupsieve==2.5",
+            #     "SQLAlchemy==2.0.25",
+            #     "stack-data==0.6.3",
+            #     "tornado==6.4",
+            #     "traitlets==5.14.1",
+            #     "typing_extensions==4.9.0",
+            #     "urllib3==2.1.0",
+            #     "wcwidth==0.2.13"
+            # ],
+        # )
         # @task.external_python(task_id="scraper_venv", 
         #                       python='/opt/airflow/venvscraper/bin/python3',
-        #                       expect_airflow=False)
+        #    
+        #                    expect_airflow=False)
+        @task
         def run_scrapper():
             # Connect with Database
             import requests
@@ -87,12 +91,15 @@ else:
 
             from bs4 import BeautifulSoup
             from sqlalchemy import create_engine, MetaData
+            from sqlalchemy.orm import Session
+
+            # from airflow.providers.mysql.operators.mysql import MySqlOperator
+            # from airflow.models.connection import Connection
 
             ## IMPORT SETTING
             SETTIGNS = json.load(open('settings.json'))
             # DB = SETTIGNS["DATABASE"]
             # USER_DB, PASSWORD_DB, HOST_DB, PORT_DB, DATABASE_NAME = DB.values()
-
 
             USER_DB=os.getenv("USER_DB")
             PASSWORD_DB=os.getenv("PASSWORD_DB")
@@ -180,9 +187,9 @@ else:
                                             product_price_ofert=product_current_price
                                             )
                     # 7 - Commit to database
-                    with engine.connect() as connection:
-                        connection.execute(insert_query)
-                        connection.commit()
+                    with Session(engine) as session:
+                        session.execute(insert_query)
+                        session.commit()
 
             ### Run
             ### Iterates over pages, scrapes and saves data
