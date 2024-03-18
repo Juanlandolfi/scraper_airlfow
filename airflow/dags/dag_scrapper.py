@@ -61,6 +61,7 @@ def scraper_kilbel_dag():
         # Helper Function
         def clean_price(string_price: str) -> float:
             return float(string_price.replace('$', '').replace('.','').replace(',','.'))
+        
         final_list = []
         for product in products_flat:
                 # For each product we...
